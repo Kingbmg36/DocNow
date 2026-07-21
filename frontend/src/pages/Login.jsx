@@ -96,8 +96,8 @@ export default function Login() {
 
           <div className="mt-10 rounded-2xl bg-white border border-slate-100 p-4 text-xs text-slate-600">
             <div className="font-medium text-slate-800 mb-1">Demo accounts</div>
-            <div>Doctor: doctor@medinest.africa / Doctor@123</div>
-            <div>Admin: admin@medinest.africa / Admin@123</div>
+            <div>Doctor: doctor@docnow.ng / Doctor@123</div>
+            <div>Admin: admin@docnow.ng / Admin@123</div>
             <div className="mt-1">Patient: use <Link to="/signup" className="text-teal-700 font-medium">phone OTP</Link> with <span className="font-mono">+2348012345678</span> (dev mock code visible on screen)</div>
           </div>
         </div>
