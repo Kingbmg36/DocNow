@@ -1,0 +1,121 @@
+{
+  "theme_archetype": {
+    "name": "Archetype 1: Organic & Earthy (Refined for Premium Healthcare)",
+    "mode": "light",
+    "description": "Warm, trustworthy, and organic healthcare aesthetic blending bone-white/warm sand bases with deep ocean blue and vibrant teal to evoke calm, clinical excellence, and approachability for African patients."
+  },
+  "typography": {
+    "heading_font": "Fraunces, serif",
+    "body_font": "DM Sans, sans-serif",
+    "pairing_strategy": "The 'Old Money Tech' variant — Classic, warm, editorial serif headings (Fraunces) paired with a clean, high-legibility geometric/humanist sans body (DM Sans). Do NOT use Inter, Roboto, or Open Sans.",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-none font-medium",
+      "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight leading-tight",
+      "h3": "text-xl sm:text-2xl font-medium",
+      "h4": "text-lg sm:text-xl font-medium",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-slate-500",
+      "overline": "text-xs tracking-[0.2em] uppercase font-bold text-teal-600"
+    }
+  },
+  "color_tokens": {
+    "background": {
+      "primary": "#FDFCFB",
+      "secondary": "#F3F4F6",
+      "surface": "#FFFFFF",
+      "glass": "bg-white/70 backdrop-blur-xl"
+    },
+    "brand": {
+      "teal_primary": "#0D9488",
+      "teal_light": "#CCFBF1",
+      "blue_dark": "#1E3A8A",
+      "blue_light": "#DBEAFE"
+    },
+    "text": {
+      "primary": "#0F172A",
+      "secondary": "#475569",
+      "muted": "#94A3B8",
+      "inverse": "#FFFFFF"
+    },
+    "urgency": {
+      "emergency": { "bg": "#FEE2E2", "text": "#B91C1C", "border": "#FCA5A5" },
+      "high": { "bg": "#FFEDD5", "text": "#C2410C", "border": "#FDBA74" },
+      "moderate": { "bg": "#FEF9C3", "text": "#A16207", "border": "#FDE047" },
+      "low": { "bg": "#DCFCE7", "text": "#15803D", "border": "#86EFAC" }
+    },
+    "gradients": {
+      "hero_accent": "bg-gradient-to-br from-teal-50 to-blue-50",
+      "primary_button": "bg-gradient-to-r from-teal-600 to-blue-700 hover:from-teal-700 hover:to-blue-800"
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Generous spacing to provide breathing room. Use 2-3x more padding than standard apps.",
+    "container_padding": "p-6 sm:p-8 lg:p-12",
+    "dashboard_grid": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6",
+    "marketing_grid": "grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12",
+    "border_radius": "rounded-2xl for primary cards, rounded-xl for internal widgets, rounded-full for pills/badges",
+    "shadows": {
+      "subtle": "shadow-[0_2px_10px_rgba(13,148,136,0.06)]",
+      "elevated": "shadow-[0_8px_30px_rgba(13,148,136,0.12)]"
+    }
+  },
+  "component_strategies": {
+    "marketing_page": {
+      "type": "Custom HTML/Tailwind",
+      "guidelines": "Avoid Shadcn for landing sections. Use overlapping bento layouts, deep asymmetrical grids, and large emotional typography. Use subtle gradients and medical blue/teal tones."
+    },
+    "dashboards": {
+      "type": "Shadcn/UI components heavily customized via Tailwind",
+      "guidelines": "Apply flat surfaces with 1px subtle borders (border-slate-100) and soft radius. Avoid heavy drop shadows. Keep density for queue management, but allow generous padding in Patient Consultation summary views."
+    },
+    "ai_triage_card": {
+      "guidelines": "Use Neumorphic tactile variant. Flat background matching parent with a sharp 1px border. Urgency badge must be prominently displayed top-right using the specific urgency color tokens."
+    },
+    "prescription_cards": {
+      "guidelines": "The 'Tracing Beam' inspired look, but subtle. A fine teal border on hover with clean, receipt-like structured rows inside."
+    },
+    "health_vitals_charts": {
+      "guidelines": "Use Recharts. Minimalist axes, remove grid lines or make them incredibly faint (slate-100). Lines/Bars must use Brand Teal (#0D9488) and Dark Blue (#1E3A8A). Add customized, accessible tooltips."
+    },
+    "testing_attributes": {
+      "guidelines": "CRITICAL: All interactive elements (buttons, links, form inputs) and key informational elements MUST include a `data-testid` attribute (kebab-case, role-based)."
+    }
+  },
+  "media": {
+    "image_urls": [
+      {
+        "url": "https://images.unsplash.com/photo-1678695972687-033fa0bdbac9",
+        "description": "African woman doctor wearing a white coat and a stethoscope",
+        "category": "marketing_hero_or_doctors_section"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1672655412906-8e10ba6ee373",
+        "description": "African man in a lab coat sitting",
+        "category": "doctor_profile_placeholder"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1666886573531-48d2e3c2b684",
+        "description": "Doctor showing a black patient something on a tablet",
+        "category": "consultation_marketing_section"
+      },
+      {
+        "url": "https://images.unsplash.com/photo-1617957848663-8e3c123cc1fb",
+        "description": "Blue medical light illustration abstract",
+        "category": "hero_background_texture"
+      }
+    ],
+    "icons": {
+      "library": "lucide-react",
+      "stroke_width": "1.5 for elegance, 2 for small utility icons"
+    }
+  },
+  "instructions_to_main_agent": [
+    "You are building DocNow.NG using React (.js files, NOT .tsx) and Tailwind CSS.",
+    "Do NOT use Inter, Roboto, or Open Sans fonts. Use Fraunces for headings and DM Sans for body text. Load these via Google Fonts in index.html.",
+    "Ensure the application is mobile-first responsive. The AI triage mobile flow must be frictionless.",
+    "Mock Paystack integration for payments.",
+    "Use Recharts for the Health Vitals tracking feature.",
+    "Apply `data-testid` attributes strictly across all interactive and dynamic components.",
+    "For Shadcn components, remember to edit their default Tailwind classes to match the design guidelines (e.g., removing default ring colors and replacing them with teal-600)."
+  ]
+}

@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    services:
+      mongodb:
+        image: mongo:7
+        ports: ["27017:27017"]
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand(\"ping\")'"
+          --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      MONGO_URL: mongodb://localhost:27017
+      DB_NAME: docnow_ci
+      JWT_SECRET: ci-test-secret-not-for-production-use-only
+      ADMIN_EMAIL: admin@docnow.ng
+      ADMIN_PASSWORD: Admin@123
+      SEED_WIPE: "true"
+      DEV_OTP_REVEAL: "true"
+      FRONTEND_URL: http://localhost:3000
+      ANTHROPIC_API_KEY: sk-ant-ci-placeholder
+      PAYSTACK_ENABLED: "false"
+      EMAIL_ENABLED: "false"
+      SMS_ENABLED: "false"
+      WHATSAPP_ENABLED: "false"
+      STORAGE_BACKEND: local
+      REACT_APP_BACKEND_URL: http://localhost:8001
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: pip install -r requirements.txt
+
+      - name: Byte-compile check
+        working-directory: backend
+        run: python -m compileall -q .
+
+      # Several test files read /app/backend/.env for MONGO_URL/DB_NAME
+      # (a holdover from the Emergent container path); when absent they fall
+      # back to sane CI-friendly defaults matching the env above, so no file
+      # is needed here — this step exists only as a comment marker.
+
+      - name: Start backend
+        working-directory: backend
+        run: |
+          nohup uvicorn server:app --host 0.0.0.0 --port 8001 > server.log 2>&1 &
+          echo $! > server.pid
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:8001/api/health && break
+            sleep 1
+          done
+
+      - name: Run backend tests
+        working-directory: backend
+        run: python -m pytest tests/ -v
+
+      - name: Show server log on failure
+        if: failure()
+        working-directory: backend
+        run: cat server.log || true
+
+      - name: Stop backend
+        if: always()
+        working-directory: backend
+        run: kill "$(cat server.pid)" 2>/dev/null || true
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --network-timeout 600000
+
+      - name: Build
+        working-directory: frontend
+        env:
+          REACT_APP_BACKEND_URL: https://placeholder.example.com
+        run: yarn build
+
+  # Deploys after both jobs above pass, only on pushes to main, and only if the
+  # Railway service tokens are configured (Settings → Secrets and variables →
+  # Actions). Skips silently otherwise — Railway's own GitHub integration can
+  # auto-deploy on push instead if you'd rather not use this job at all.
+  deploy:
+    needs: [backend-test, frontend-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy backend
+        if: ${{ secrets.RAILWAY_TOKEN_BACKEND != '' }}
+        working-directory: backend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_BACKEND }}
+        run: railway up --service backend --detach
+
+      - name: Deploy frontend
+        if: ${{ secrets.RAILWAY_TOKEN_FRONTEND != '' }}
+        working-directory: frontend
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_FRONTEND }}
+        run: railway up --service frontend --detach
+
+      - name: No deploy tokens configured
+        if: ${{ secrets.RAILWAY_TOKEN_BACKEND == '' && secrets.RAILWAY_TOKEN_FRONTEND == '' }}
+        run: |
+          echo "No RAILWAY_TOKEN_BACKEND / RAILWAY_TOKEN_FRONTEND secrets set — skipping CLI deploy."
+          echo "If Railway's GitHub integration is connected to this repo, it already deployed on push."

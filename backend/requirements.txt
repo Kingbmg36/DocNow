@@ -1,0 +1,36 @@
+# DocNow.NG backend — runtime dependencies (traced from actual imports).
+# The original Emergent-base list (127 lines: pandas, google-*, huggingface, litellm,
+# stripe, jq, tiktoken, …) is preserved in requirements-emergent-full.txt.bak.
+# Every package below ships manylinux wheels, so the Docker build needs no compiler.
+
+# Web framework + server
+fastapi==0.110.1
+uvicorn[standard]==0.25.0
+starlette==0.37.2
+pydantic==2.13.4
+email-validator==2.3.0
+python-multipart==0.0.28
+
+# Database
+motor==3.3.1
+pymongo==4.5.0
+
+# Auth
+bcrypt==4.1.3
+PyJWT==2.12.1
+
+# Config, HTTP, scheduling
+python-dotenv==1.2.2
+httpx==0.28.1
+APScheduler==3.10.4
+
+# AI (Anthropic Claude)
+anthropic>=0.40.0
+
+# Object storage (doctor license docs; boto3 only used when STORAGE_BACKEND=s3)
+boto3==1.43.7
+
+# Test suite (safe to keep; used by tests/, not the running app)
+requests==2.34.1
+pytest==9.0.3
+pytest-asyncio==0.24.0

@@ -1,0 +1,31 @@
+{
+  "summary": "Iteration 7 — Patient intake (v2 Nigeria-focused, 7 sections) + Doctor onboarding wiring verified. Backend: 7/7 new tests pass (schema v2, /mine pending→completed, submit with past_illnesses=['Hypertension','Diabetes'] → user.lga/occupation/smoking/goals/next_of_kin_name mirrored, chronic_conditions auto-merged Hypertension+Diabetes, signals.care_segment includes 'diabetic'+'hypertensive', risk_score recomputed, RBAC blocks patient→doctor_onboarding submit, doctor_onboarding 400s when attestations false, /profile/me + /profile/sections/mine regression OK). Frontend: Patient OTP login (+2348012345678) → /patient → intake modal (qx-patient_intake) auto-opens with 'Step 1 of 7 · About you', close button (qx-close-patient_intake) works, banner CTA (intake-banner-cta) visible after close, CTA reopens modal. Doctor email login → /doctor → doctor_onboarding modal (qx-doctor_onboarding) auto-opens with 'Step 1 of 4', close works, doctor-onboarding-cta banner visible, CTA reopens. ConsultationRoom code review: QuestionnaireRunner code='doctor_post_consult' wired with dismissible=false and navigates /doctor on both onClose+onSubmitted. All review-request items confirmed working.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_patient_intake_questionnaire.py",
+    "/app/test_reports/pytest/intake_results.xml"
+  ],
+  "action_items": [
+    "OPTIONAL CLEANUP: /app/backend/tests/backend_test.py and /app/backend/tests/test_appointments_and_notifications.py contain ~55 stale tests that try to login patient with email/password (patient@medinest.africa) — but patient auth was migrated to phone-OTP. These tests now fail at setup with 401. Suggest either deleting them or rewriting their patient fixtures to use phone-OTP. Not blocking this iteration; not a regression caused by current changes."
+  ],
+  "critical_code_review_comments": [
+    "questionnaire_service.submit_response correctly idempotent for mirroring (uses $set, runs apply_profile_update which merges via existing logic). past_illnesses → chronic_conditions merge preserves prior entries (line 381-387 reads existing list, appends mapped if not in existing). Verified by backend test.",
+    "Doctor attestations enforcement is server-side via required_true list (questionnaire_service.py:316-318) — 400 is returned with a clear message identifying which key failed. UI must mark these 4 fields red if false. Worth double-checking that QuestionnaireRunner surfaces this 400 to the doctor (out of scope for this run).",
+    "patient_intake mirror_keys (questionnaire_service.py:342-361) covers all 51 fields except past_illnesses_other (intentional — special handling via cond_map). Confirmed mirror_keys list is comprehensive.",
+    "ConsultationRoom.jsx:314-322 correctly passes dismissible={false} to QuestionnaireRunner — verified by code review. Both onClose and onSubmitted navigate to /doctor.",
+    "PatientDashboard auto-open gate uses localStorage `mdn_intake_dismissed_<userId>` — persistent across refresh as designed. DoctorDashboard uses `mdn_dx_onboarding_dismissed_<userId>` — same pattern. Verified via UI test (after close, modal stays closed; CTA click re-opens without persistence).",
+    "status_for_user (questionnaire_service.py:402-407) queries with context_id=None for non-context questionnaires — correctly excludes doctor_post_consult per-consultation submissions from /mine.",
+    "Pre-existing test files /app/backend/tests/backend_test.py and test_appointments_and_notifications.py reference the obsolete patient@medinest.africa email login (now phone-OTP). Recommend cleanup."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_patient_intake_questionnaire.py (NEW — 7 tests, ~180 lines)"
+  ],
+  "success_rate": {"backend": "100% (7/7 new patient_intake tests + RBAC + regression)", "frontend": "100% on the auto-open/banner/CTA/close-reopen flows tested for both patient and doctor"},
+  "test_credentials": "Patient phone +2348012345678 (dev_otp from /api/auth/otp/send). Doctor doctor@medinest.africa/Doctor@123. TEST_-prefixed fresh OTP patients created per backend test for isolation.",
+  "seed_data_creation": "Each backend test that needs a clean intake state registers a fresh TEST_Intake patient with a random +23470xxxxxxxx phone via mock OTP → /auth/register/patient. No production data modified. Chioma (+2348012345678) was used only for the frontend UI auto-open test — her dismissal flag may now be set in her localStorage on the test browser (irrelevant to production users).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "The new patient_intake v2 schema lives in /app/backend/questionnaire_service.py. Mirror logic lives in submit_response() lines 339-389. Frontend wiring: PatientDashboard.jsx (intake-banner + intake-banner-cta + auto-open via localStorage gate), DoctorDashboard.jsx (doctor-onboarding-banner + doctor-onboarding-cta), ConsultationRoom.jsx (doctor_post_consult non-dismissible). Backend test: /app/backend/tests/test_patient_intake_questionnaire.py. Note: pre-existing /app/backend/tests/backend_test.py and test_appointments_and_notifications.py use stale patient email login and now 401 — those failures are NOT regressions from this iteration. ConsultationRoom doctor_post_consult was not exercised end-to-end via UI (would require accept-queue→start→complete e2e from doctor side which is slow); the wiring was verified via code review.",
+  "rca of the issue": "N/A — no bugs found. Patient intake v2, mirroring, derived signals, banner UX, doctor onboarding banner UX all work as specified. The Nigeria-focused 7-section schema is fully wired into both backend persistence and frontend QuestionnaireRunner. Profile mirror correctly populates user.lga, occupation, smoking, goals, next_of_kin_name, chronic_conditions (via past_illnesses merge → adds Hypertension+Diabetes), and recomputes derived_signals.care_segment to include 'diabetic'+'hypertensive'."
+}

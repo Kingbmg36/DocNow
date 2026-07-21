@@ -1,0 +1,54 @@
+{
+  "summary": "Iteration 4 testing of phone-OTP auth + 4-gate progressive onboarding + versioned profile + signals. Backend: 22 pytest tests (20 pass, 2 fail). Frontend: e2e signup -> patient dashboard flow verified manually via Playwright. One CRITICAL backend bug: non-sparse unique index on users.email causes E11000 on subsequent OTP patient registrations because email=null collides. Plus one minor issue: GET /profile/me does not lazily recompute signals if derived_signals row is missing. All other features (existing patient OTP login, OTP brute-force lockout, 412 gating on /cases, Gate-2 save, profile_events emission, red-flag question bank, signals=Emergency for chest_pain+Hypertension=hypertensive segment, consents validation, expired/invalid reg token rejection, phone E.164 validation, admin/doctor email login regression, doctor queue, pending doctor blocked) all work correctly.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "POST /api/auth/register/patient",
+        "issue": "Returns 500 (E11000 duplicate key on users.email index) when registering a second OTP patient. Root cause: db.py creates `db.users.create_index('email', unique=True)` without sparse=True. Seeded patient Chioma already has email=null. Any new OTP-registered patient (email=null) collides. FIX: change to `create_index('email', unique=True, sparse=True)` and drop+recreate the existing index, OR use partialFilterExpression {email:{$type:'string'}}.",
+        "priority": "HIGH"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "GET /api/profile/me",
+        "issue": "Returns signals=null if derived_signals collection has no row for the user (e.g. fresh login after a wipe). Should lazily call recompute_signals(user.id) when signals is missing — OR call recompute on every OTP verify of an existing user."
+      },
+      {
+        "endpoint": "POST /api/auth/otp/send",
+        "issue": "OTP_TTL_MIN=10 -> expires_in=600 matches spec; but verify endpoint hard-codes attempts>=5 cap on the latest unused OTP record — wrong codes still mark `used` semantics OK. Behaviour verified, but the 5-attempt lockout is per-OTP-record, NOT per-phone; a user can simply call /otp/send to reset. Spec confirms this is acceptable. No fix needed, noted for completeness."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_otp_profile.py",
+    "/app/test_reports/pytest/otp_profile_results.xml"
+  ],
+  "action_items": [
+    "Fix users.email unique index: make it sparse (or use partialFilterExpression) so OTP-registered patients (email=null) do not collide. This is a P0 blocker — only the first OTP patient can be created in the current DB state.",
+    "In GET /profile/me (or on OTP verify of existing user) lazily recompute derived_signals when missing so the UI never sees signals=null for an existing patient."
+  ],
+  "critical_code_review_comments": [
+    "db.py:10 — `users.create_index('email', unique=True)` is NOT sparse. With OTP patients storing email=null, only one such doc is allowed. Must be sparse or partial.",
+    "auth.py register_patient: stores `email: None` explicitly. Combined with the non-sparse index this guarantees the duplicate-key error.",
+    "profile.py /me does not recompute signals on demand — relies on having been computed previously. Should fall back to `await recompute_signals(user_id)` if `get_signals` returns None.",
+    "otp.py verify_otp: increments `attempts` on the latest unused record and stops accepting once attempts>=5 (good), but a subsequent /otp/send creates a new record and `used`-marks the previous, effectively resetting the counter (matches spec, but should be explicitly documented since UI never surfaces 'attempts exhausted')."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_otp_profile.py (new)"
+  ],
+  "success_rate": {
+    "backend": "91% (20/22 own tests pass; the 2 failures are real backend bugs above)",
+    "frontend": "100% on the e2e signup -> overview signals flow"
+  },
+  "test_credentials": "Admin: admin@medinest.africa/Admin@123; Doctor approved: doctor@medinest.africa/Doctor@123; Doctor pending: doctor.pending@medinest.africa/Doctor@123; Patient existing: +2348012345678 (dev_otp returned in /auth/otp/send response).",
+  "seed_data_creation": "Pre-test fixture in test_otp_profile.py resets Chioma's Gate-2 fields and clears derived_signals + profile_events + TEST_-prefixed users so tests are deterministic.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Re-run /app/backend/tests/test_otp_profile.py after main agent fixes the users.email sparse index and the /profile/me lazy signals recompute. The other 20 tests already pass. Frontend signup flow was manually verified end-to-end (phone -> auto-filled OTP -> /patient overview showing Completeness 100%, Risk 40, Triage=Emergency, Care segment=Hypertensive, Next best action). The old /app/backend/tests/test_appointments_and_notifications.py expects an email-based patient (patient@medinest.africa) which no longer exists in iteration-4 schema (patients are phone-OTP only) — its failures are EXPECTED and unrelated; that file should be rewritten or removed by main agent.",
+  "rca of the issue": "RCA #1 (E11000 on register_patient): backend/db.py line 10 creates a non-sparse unique index on users.email. Iteration 4 introduced patients with email=None. The seeded Chioma patient (also email=None) occupies the single allowed null. Therefore every subsequent /auth/register/patient call inserts another email=None doc and Mongo rejects it with DuplicateKeyError -> FastAPI returns 500. Reproduce: send_otp + verify_otp + register_patient on any +2347xxxxxxxx number -> 500. Mitigation: convert the index: `db.users.dropIndex('email_1')` then `db.users.create_index('email', unique=True, sparse=True)` (or partialFilterExpression {email:{$type:'string'}}). Restart backend after fix. RCA #2 (signals=null on /profile/me): /routes/profile.py get_my_profile calls get_signals(user_id) which only reads from derived_signals; if the row is absent, signals=None. Existing OTP-verify path does not call recompute_signals for an existing user. Mitigation: in get_my_profile, if signals is None and user.role=='patient', call `await recompute_signals(user_id)` then re-read."
+}

@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 6 — Gate 3 contextual section unlocks verified. Created /app/backend/tests/test_gate3_unlocks.py with 13 tests covering every bullet in the review request. All 13 pass on first run, AND all 25 previous-iteration regression tests (test_otp_profile.py, test_iteration5_fixes.py, test_iteration3_regression.py) still pass. Total: 38/38 backend tests green. The 6-section catalog, keyword-based triage unlocks (pregnancy + mental), first-consultation lifestyle/healthcare_access unlock, prescription pharmacy_prefs unlock, 30-day family_health auto-unlock, idempotency, RBAC, schema-allowed-field whitelisting, in-app notifications, and 403/404 error paths all behave exactly as specified in unlock_service.py.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/profile/sections/{key} (auth_utils.require_role)", "issue": "Returns generic 403 'Forbidden' (no JSON body explaining 'patient-only') when a doctor calls patient-only routes. Functional behaviour is correct; just a UX-grade hint for clearer error messages."},
+      {"endpoint": "GET /api/profile/sections/catalog", "issue": "Catalog endpoint requires authentication (Depends(get_current_user)). Frontend cannot read the schema before login. Consider making it public or document this expectation."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_gate3_unlocks.py",
+    "/app/test_reports/pytest/gate3_results.xml",
+    "/app/test_reports/pytest/iteration6_regression.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "unlock_service.unlock() is correctly idempotent — find_one + insert + notify pattern handles double-fire safely. Verified by triage-twice test (1 row, 1 notification).",
+    "maybe_unlock_post_consultation() gates on count==1 (first completed only) — confirmed; second consultation will NOT re-fire lifestyle/healthcare_access (consistent with spec).",
+    "profile_sections.save_section uses an allow-list ({k:v for k,v in payload.items() if k in allowed}) which silently drops unknown keys. Could optionally log/raise 422 for stricter API contracts, but current behaviour matches spec.",
+    "maybe_unlock_30_days() runs only on GET /sections/mine — there is no background sweep. Family Health will only unlock after the patient (or their session) hits this endpoint at least once after day-30. Acceptable but worth documenting.",
+    "Triage keyword match is case-insensitive and substring-based (e.g. 'ante' matches 'antenatal', 'mood' matches 'moody'). Be aware of potential false positives like 'antibiotic' (contains 'anti' but not 'ante') — no false-positive triggers found in tests, but the substring 'gyn' could match arbitrary words; consider word-boundary regex if false positives surface.",
+    "CORS in server.py uses allow_origins=['*'] with allow_credentials=False — fine for token-bearer auth; no change needed for Gate 3."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_gate3_unlocks.py (new — 13 tests, ~270 lines, fully self-contained)"
+  ],
+  "success_rate": {"backend": "100% (38/38 — 13 new Gate-3 + 25 prior regression)", "frontend": "n/a (backend-only run as requested)"},
+  "test_credentials": "Admin admin@medinest.africa/Admin@123; Doctor doctor@medinest.africa/Doctor@123; Chioma phone +2348012345678 (dev_otp from /api/auth/otp/send). New TEST_G3_* OTP patients generated per test with random +23470xxxxxxxx phones for isolation.",
+  "seed_data_creation": "Each test (except the 30-day Chioma test) registers a fresh TEST_G3_-prefixed OTP patient with random phone to guarantee a clean profile_unlocks slate. The 30-day test calls _reset_chioma() which: (a) db.profile_unlocks.delete_many({user_id: chioma_id}), (b) $unset all section field keys on the user doc, (c) deletes prior section.unlocked notifications, then backdates created_at to 35 days ago. Mocked: OTP (dev_otp returned), Paystack (mock verify), Video/Call (not exercised).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All Gate-3 unlock logic is fully covered by /app/backend/tests/test_gate3_unlocks.py (13 tests, ~84s wall clock — slow because each test goes through real OTP + Gate-2 flows). For iteration 7+, prefer using fresh TEST_*-prefixed OTP patients per test rather than reusing Chioma except for tests that explicitly need the seeded user. Note: /api/profile/sections/catalog requires auth (any role). The 30-day rule only fires on GET /sections/mine — there is no scheduled job. unlock_service.SECTIONS is the source of truth for allowed-fields per section; bypass it at your peril.",
+  "rca of the issue": "N/A — no bugs found. All 13 Gate-3 spec bullets verified passing. unlock_service.py and routes/profile_sections.py correctly implement: schema catalog, keyword-driven triage unlocks, post-consultation (1st-only) unlocks, post-prescription unlock, 30-day on-demand unlock, idempotent inserts, in-app notifications via notify(), schema-driven field whitelisting, and patient-only RBAC."
+}

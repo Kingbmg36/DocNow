@@ -1,0 +1,35 @@
+{
+  "summary": "Iteration 5 re-test of the 2 backend bugs flagged in iteration_4.json. Both fixes verified. (1) users.email partial unique index now allows multiple OTP-registered patients (3 in a row succeed; no 'email' field present in the response object). (2) GET /profile/me lazily calls recompute_signals when derived_signals is missing — fresh OTP patient now sees risk_score, triage_priority, care_segment, next_best_actions populated immediately. All 22 tests in /app/backend/tests/test_otp_profile.py pass (was 20/22 in iter 4). Additionally wrote and passed an end-to-end iteration-3 regression test covering appointment slot suggestion, booking, doctor notifications, doctor accepting via /appointments/{id}/start, and completion of consultation with care-plan creation + patient notification. Total: 25/25 backend tests passing.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/profile/gate2", "issue": "filled() treats empty lists ([]) for chronic_conditions/current_medications/allergies as NOT filled, so a healthy patient with no conditions/meds/allergies cannot complete Gate-2 unless they enter a placeholder string. Pre-existing behaviour (not part of iter-5 fixes), but flagging for UX review — consider treating empty list as 'declared none' if user has confirmed."}
+    ]
+  },
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_otp_profile.py",
+    "/app/backend/tests/test_iteration5_fixes.py",
+    "/app/backend/tests/test_iteration3_regression.py",
+    "/app/test_reports/pytest/otp_profile_results.xml",
+    "/app/test_reports/pytest/iteration5_results.xml",
+    "/app/test_reports/pytest/iteration3_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "db.py:11-19 correctly drops legacy email_1 index and recreates with partialFilterExpression {email:{$type:'string'}} — fix is proper and idempotent.",
+    "auth.py register_patient no longer writes email=None / password_hash=None for OTP patients. Response no longer leaks _id (doc.pop('_id', None)).",
+    "profile.py get_my_profile now lazy-imports profile_service.recompute_signals and re-reads signals when missing — works for fresh OTP patients."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration5_fixes.py (new — focused on the 2 fixes)",
+    "/app/backend/tests/test_iteration3_regression.py (new — iter-3 appointment/notification/consultation E2E adapted to OTP patient schema)"
+  ],
+  "success_rate": {"backend": "100% (25/25)", "frontend": "n/a (backend-only run)"},
+  "test_credentials": "Admin admin@medinest.africa/Admin@123; Doctor doctor@medinest.africa/Doctor@123; Doctor pending doctor.pending@medinest.africa/Doctor@123; Existing patient phone +2348012345678 (dev_otp returned in /auth/otp/send).",
+  "seed_data_creation": "test_otp_profile.py session fixture resets Chioma's Gate-2 + clears derived_signals/profile_events + deletes TEST_*-prefixed users for determinism. iteration5_fixes & iteration3_regression generate unique +23470xxxxxxxx phones per run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Iteration 5 fixes verified end-to-end. /app/backend/tests/test_appointments_and_notifications.py is the OLD pre-iter-4 file that depends on patient@medinest.africa email login — it is OBSOLETE and its failures are expected (already superseded by test_iteration3_regression.py which exercises the same flow with an OTP patient). Main agent may safely delete or rewrite that legacy file. Minor UX note: Gate-2 completion logic rejects empty arrays for chronic_conditions/current_medications/allergies — a placeholder like ['None'] is currently required.",
+  "rca of the issue": "N/A — both previously reported bugs are now resolved. Verified by (a) registering 3 different OTP patients in a row all returning 200 with no 'email' key in the user payload, and (b) immediately calling GET /profile/me on a freshly registered OTP patient and observing a non-null signals object containing risk_score, triage_priority, care_segment, next_best_actions."
+}

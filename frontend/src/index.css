@@ -1,0 +1,131 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+    margin: 0;
+    font-family: "DM Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #FDFCFB;
+    color: #0F172A;
+}
+
+.font-display {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+    font-feature-settings: "ss01", "ss02";
+}
+
+.font-body {
+    font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+    :root {
+        --background: 34 33% 99%;          /* #FDFCFB */
+        --foreground: 222 47% 11%;          /* #0F172A */
+        --card: 0 0% 100%;
+        --card-foreground: 222 47% 11%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222 47% 11%;
+        --primary: 175 84% 32%;             /* teal-600 #0D9488 */
+        --primary-foreground: 0 0% 100%;
+        --secondary: 210 40% 96%;
+        --secondary-foreground: 222 47% 11%;
+        --muted: 210 40% 96%;
+        --muted-foreground: 215 16% 47%;
+        --accent: 175 100% 91%;             /* teal-100 #CCFBF1 */
+        --accent-foreground: 175 84% 22%;
+        --destructive: 0 84% 60%;
+        --destructive-foreground: 0 0% 100%;
+        --border: 214 32% 91%;              /* slate-200 */
+        --input: 214 32% 91%;
+        --ring: 175 84% 32%;
+        --chart-1: 175 84% 32%;             /* teal */
+        --chart-2: 224 76% 33%;             /* blue */
+        --chart-3: 25 95% 53%;
+        --chart-4: 142 76% 36%;
+        --chart-5: 48 96% 53%;
+        --radius: 1rem;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+    h1, h2, h3, h4, h5 {
+        @apply font-display;
+        letter-spacing: -0.02em;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-medium text-white transition-all;
+        background-image: linear-gradient(to right, #0D9488, #1E3A8A);
+        box-shadow: 0 8px 24px -8px rgba(13, 148, 136, 0.35);
+    }
+    .btn-primary:hover {
+        background-image: linear-gradient(to right, #0F766E, #1E40AF);
+        transform: translateY(-1px);
+        box-shadow: 0 12px 30px -8px rgba(13, 148, 136, 0.45);
+    }
+    .btn-ghost-pill {
+        @apply inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors;
+    }
+    .card-soft {
+        @apply rounded-2xl bg-white border border-slate-100 p-6;
+        box-shadow: 0 2px 10px rgba(13, 148, 136, 0.04);
+    }
+    .card-elevated {
+        @apply rounded-2xl bg-white border border-slate-100 p-6;
+        box-shadow: 0 8px 30px rgba(13, 148, 136, 0.08);
+    }
+    .grain-bg {
+        background-image:
+            radial-gradient(at 20% 10%, rgba(204, 251, 241, 0.6) 0px, transparent 50%),
+            radial-gradient(at 80% 0%, rgba(219, 234, 254, 0.55) 0px, transparent 50%),
+            radial-gradient(at 0% 100%, rgba(254, 252, 251, 1) 0px, transparent 50%);
+    }
+    .overline {
+        @apply text-xs tracking-[0.2em] uppercase font-bold text-teal-600;
+    }
+}
+
+/* Subtle scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Fade-in */
+@keyframes fadeUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.fade-up {
+    animation: fadeUp 0.5s ease-out both;
+}
+
+@layer base {
+    [data-debug-wrapper="true"] {
+        display: contents !important;
+    }
+    [data-debug-wrapper="true"] > * {
+        margin-left: inherit; margin-right: inherit; margin-top: inherit; margin-bottom: inherit;
+        padding-left: inherit; padding-right: inherit; padding-top: inherit; padding-bottom: inherit;
+        column-gap: inherit; row-gap: inherit; gap: inherit;
+        border-left-width: inherit; border-right-width: inherit; border-top-width: inherit; border-bottom-width: inherit;
+    }
+}

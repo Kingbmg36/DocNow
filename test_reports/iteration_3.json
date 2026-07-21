@@ -1,0 +1,56 @@
+{
+  "summary": "Tested new appointment booking + notifications system. Backend: 34/34 NEW tests pass (slots, book, conflict 409, mode validation, RBAC, pending doctor 403, start→consultation, payment→case=scheduled+doctor notification, complete→appointment.completed+patient notification, cancel + notify, notifications list/read/read-all). Regression: legacy urgent queue 13/13 e2e still pass. Found and fixed 1 CRITICAL backend bug: POST /api/appointments/{id}/start returned 500 due to MongoDB ObjectId in response (a = find_one without _id projection then spread into response). Fixed by adding {\"_id\": 0} projection. Frontend critical flows verified: patient login → triage AI → path chooser → scheduled path → video mode → slot selection → payment → 'Appointment confirmed' success screen.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/appointments/slots",
+        "issue": "random.choice for doctor selection makes slot suggestions non-deterministic. With one approved seeded doctor this is fine; with many it could produce uneven load. Acceptable for MVP."
+      },
+      {
+        "endpoint": "/api/appointments/slots",
+        "issue": "Returns slots starting from the next 30-min boundary including SLOT_LOOKAHEAD_HOURS=72h. After many test runs back-to-back, near-term slots can fill up; tests must scan more slots."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Patient appointments list after booking",
+        "issue": "After 'Appointment confirmed' → 'View my appointments', the appointments-view briefly showed 'No upcoming appointments' before the 8s poll refreshed. Consider triggering an immediate refetch on mount instead of relying on poll, to avoid an empty state flash for the user.",
+        "affected_selectors": ["[data-testid='appointments-view']"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_appointments_and_notifications.py",
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/appointments_results.xml"
+  ],
+  "action_items": [
+    "Trigger an immediate fetch of /api/appointments/mine on mount of AppointmentsView (don't rely solely on 8s poll) — prevents 'No upcoming appointments' flash right after booking.",
+    "(Optional) Use round-robin or load-based doctor pairing in /appointments/slots instead of random.choice for predictable balancing.",
+    "(Carried) Consider splitting PatientDashboard.jsx (>700 lines) into smaller view components."
+  ],
+  "critical_code_review_comments": [
+    "BUG (FIXED by tester): /appointments/{id}/start fetched the appointment without excluding _id and then spread it into the response, causing 'ObjectId is not iterable' 500. Fixed via projection {\"_id\": 0}. Same pattern should be audited in other routes that spread Mongo docs into responses.",
+    "Good: /payments/verify correctly branches on case.flow to set status='scheduled' vs 'queued' and emits appointment.booked notification to assigned doctor.",
+    "Good: /consultations/{id}/complete properly closes linked appointment (status='completed') and emits consultation.completed notification to patient.",
+    "Good: require_approved_doctor() is correctly applied to /appointments/{id}/start — pending doctor receives 403.",
+    "Slot conflict check is doctor+timestamp scoped (correct). 409 returned. Validated by test_07_duplicate_slot_409.",
+    "Notifications endpoints correctly RBAC-scope by user_id and exclude _id. /read returns 404 on missing notif (good)."
+  ],
+  "updated_files": [
+    "/app/backend/routes/appointments.py (fixed _id leak in start endpoint)",
+    "/app/backend/tests/test_appointments_and_notifications.py (new test file, 34 tests)"
+  ],
+  "success_rate": {"backend": "100% (34/34 new + 13/13 regression e2e)", "frontend": "Critical flows verified: login, triage AI, path chooser, scheduled+slot+video, payment, success screen, doctor login with notification badge, notifications panel render"},
+  "test_credentials": "All 4 seeded creds verified working (admin, doctor approved, doctor pending, patient).",
+  "seed_data_creation": "Created multiple test cases/appointments under patient@medinest.africa during runs; one fully completed appointment cycle (patient → triage → scheduled appointment → pay → doctor start → notes → Rx Paracetamol 500mg BID 5d → complete → care plan → patient notif). Multiple cancelled appointments also.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend appointment + notifications system is solid. The only fix applied was projection({\"_id\": 0}) on the start endpoint. Frontend flows for scheduled booking work end-to-end through payment confirmation. Only minor UX nit: AppointmentsView should fetch on mount (not rely on 8s poll). Backend test file /app/backend/tests/test_appointments_and_notifications.py is the canonical regression suite for this iteration.",
+  "rca_of_the_issue": "BUG: /api/appointments/{id}/start returned 500 Internal Server Error. Root cause: `a = await db.appointments.find_one({\"id\": appt_id})` did not project away `_id`. The ObjectId stayed on the doc, then the response body spread `**a` into the JSON payload. FastAPI's jsonable_encoder cannot serialize ObjectId → TypeError → 500. Fix: add `{\"_id\": 0}` projection to find_one and drop the manual `{**a, \"_id\": None}` hack. Verified: all 5 dependent tests (test_15..test_21) flipped from FAIL to PASS after fix."
+}
