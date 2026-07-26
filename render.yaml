@@ -1,0 +1,92 @@
+# Render Blueprint for DocNow.NG — https://render.com/docs/blueprint-spec
+#
+# Two services, both scoped to their own subdirectory via dockerContext, so there's
+# no dashboard "Root Directory" setting to drift or reset — the build scope lives
+# here in git. Deploy: render.com/deploy or Dashboard → New → Blueprint → pick this repo.
+#
+# Secrets (marked sync: false below) are entered once in the Render dashboard after
+# the first blueprint sync — never stored in this file.
+
+services:
+  # ---------------------------------------------------------------------------
+  # Backend — FastAPI, Docker build scoped to backend/
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: docnow-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: MONGO_URL
+        sync: false          # MongoDB Atlas connection string
+      - key: DB_NAME
+        value: docnow
+      - key: JWT_SECRET
+        generateValue: true  # Render generates a secure random value
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SEED_WIPE
+        value: "false"       # never true in prod — wipes all collections on boot
+      - key: DEV_OTP_REVEAL
+        value: "false"
+      - key: FRONTEND_URL
+        sync: false          # set to the frontend's Render URL once known
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-4-8
+      - key: PAYSTACK_ENABLED
+        value: "false"       # flip true + set keys below to take real payments
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: EMAIL_ENABLED
+        value: "false"
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: "DocNow.NG <no-reply@docnow.ng>"
+      - key: STORAGE_BACKEND
+        value: local
+      - key: SMS_ENABLED
+        value: "false"
+      - key: TERMII_API_KEY
+        sync: false
+      - key: TERMII_SENDER_ID
+        value: DocNow
+      - key: WHATSAPP_ENABLED
+        value: "false"
+      - key: WHATSAPP_API_VERSION
+        value: v22.0
+      - key: WHATSAPP_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_BUSINESS_ACCOUNT_ID
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_APP_SECRET
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+
+  # ---------------------------------------------------------------------------
+  # Frontend — React (CRA/CRACO), built and served as a static site (no
+  # container needed for static files; Render's static hosting is free).
+  # ---------------------------------------------------------------------------
+  - type: web
+    name: docnow-frontend
+    runtime: static
+    buildCommand: cd frontend && yarn install --network-timeout 600000 && yarn build
+    staticPublishPath: ./frontend/build
+    envVars:
+      - key: REACT_APP_BACKEND_URL
+        sync: false          # set to the backend's Render URL (baked in at build time)
+    routes:
+      # SPA fallback so client-side routes (react-router) don't 404 on refresh.
+      - type: rewrite
+        source: /*
+        destination: /index.html
