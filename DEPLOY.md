@@ -114,7 +114,7 @@ it does **not** wipe because `SEED_WIPE=false`.
 4. As a patient, run the symptom checker (exercises Claude) and book → pay (Paystack test card).
 
 Run the backend test suite on the platform if you like:
-`cd backend && python -m pytest tests/ -v` (needs `MONGO_URL`/`DB_NAME` set).
+`cd backend && pip install -r requirements-dev.txt && python -m pytest tests/ -v` (needs `MONGO_URL`/`DB_NAME` set). `requirements-dev.txt` layers pytest on top of the production `requirements.txt` — it's intentionally not installed in the Docker image.
 
 ---
 

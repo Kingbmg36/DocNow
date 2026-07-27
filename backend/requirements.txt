@@ -30,7 +30,7 @@ anthropic>=0.40.0
 # Object storage (doctor license docs; boto3 only used when STORAGE_BACKEND=s3)
 boto3==1.43.7
 
-# Test suite (safe to keep; used by tests/, not the running app)
-requests==2.34.1
-pytest==9.0.3
-pytest-asyncio==0.24.0
+# Test-only deps (requests, pytest, pytest-asyncio) live in requirements-dev.txt —
+# keeping them out of here matters: pytest==9.0.3 conflicts with pytest-asyncio's
+# pytest<9 pin, which broke the production Docker build on Render even though
+# neither package is ever imported by the running app.
